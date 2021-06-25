@@ -261,25 +261,62 @@
 - 테마가 다르다면 비 반응형 사이트로 취급해야 합니다
 - `Script for Responsive Web` 옵션이 아닌, `Script for PC/Mobile Web` 옵션으로 스크립트를 삽입해주세요
 
-### 대시보드에 섬네일이 노출되지 않거나, 🚫 섬네일로 바뀌어 보입니다
+### 데이블 meta test tool에 에러가 보입니다
 
-- 아래 두 가지 상황을 확인해주세요. ([Media FAQ](https://www.notion.so/f87a73a4165047229c4119253c31b522) 참고)
+1. 서버 응답이 BAD REQUEST인 경우,
 
-1. 이미지 접근 권한이 허용되지 않은 경우
+   - 메타 태그를 수집하는 데이블 크롤러가 차단된 것일 수 있습니다
+   - 🤔 How to solve
 
-   - 3rd party access 허용을 요청해주세요
-   - WP-CORS 플러그인을 통한 가이드를 제공합니다
-   - 🤔 How to
+     - HQ > meta_info_fetcher_proxy 설정을 true로 변경해주세요
+     - 아래 2개 IP에 대해 방화벽을 열어달라고 요청해주세요
 
-     1. WP-CORS 플러그인 Install > Activate
-     2. Settings > CORS > 아래 코드 삽입
+       `52.78.172.216` / `13.124.146.239`
 
-        `http://dable.io, https://dable.io, http://api.dable.io, https://api.dable.io`
+   - [참고 가이드](https://www.notion.so/IP-meta-proxy-0ac7e3b6fd1d474e9a1076144775ff5a)
 
-2. 이미지 hotlinking을 막아둔 경우
-   - hotlink 제한 해제를 요청해주세요
-   - 매체에서 직접 설정하지 않았더라도 테마에 따라 자동 설정되어 있을 수 있습니다
-   - [참고 가이드](https://www.hostinger.com/tutorials/hotlinking#3-Using-WordPress-Plugins) (설정 방법이지만 역으로 추적할 수 있습니다)
+2. 서버 응답은 정상(SUCCESS)이지만 이미지만 노출되지 않는 경우,
+   - 이미지 hotlinking 혹은 CDN(image server) 설정으로 인해 접근이 block된 것일 수 있습니다
+   - 🤔 How to solve
+     - [아래 가이드](https://www.notion.so/WordPress-726443fcf7134dd09b0b7ed755a72c63)를 참고해주세요.
+   - 만약, 대시보드 프리뷰와 라이브 사이트에서는 섬네일이 정상 노출된다면 test tool에서의 미노출 이슈는 _무시하셔도 됩니다_
+     - 😲 Why
+       - test tool의 referer header는 `admin.dable.io`인데, 만약 매체에서 `api.dable.io`에 대한 접근만 허용했다면 이런 상황이 발생할 수 있습니다
+       - test tool에서만 불러오지 못할 뿐, 위젯이 렌더링되는 데에는 아무 이슈가 없습니다
+       - 다만 매체에서 test tool 에러를 민감하게 받아들일 경우, access whitelist에 `*.dable.io`를 추가하는 등의 대응을 해주시면 됩니다
+
+### 위젯 섬네일이 blank이거나, 🚫 이미지로 노출됩니다
+
+1. 매체에서 이미지 hotlinking을 막은 경우,
+   - 👩‍🏫 hotlinking이란?
+     - 매체 서버에 올라가있는 이미지를 다른 사이트에서 URL 기반으로 가져다 쓰는 것을 말합니다
+     - 해당 사이트에서 이미지를 요청할 때마다 매체 서버에 부담이 가고 비용이 증가할 수 있습니다
+     - 매체에서 직접 설정하지 않았더라도 WP 테마에 따라 자동 설정되어 있을 수 있습니다
+   - hotlinking 대응을 위한 대체 이미지가 등록된 경우 🚫 이미지로 노출되고,
+     그렇지 않은 경우 섬네일이 빈 채로(or 엑박) 위젯이 렌더링되거나, 위젯이 아예 렌더링되지 않을 수 있습니다 - [Media FAQ](https://www.notion.so/Recommendation-aeeff2e0a8f94f35b45eca199f7626c0) 참고
+   - 🤔 How to solve
+     1. hotlinking 제한 해제를 요청해주세요
+        - [참고 가이드](https://www.hostinger.com/tutorials/hotlinking#3-Using-WordPress-Plugins) (설정 방법이지만 역으로 추적할 수 있습니다)
+     2. 전체에 대한 hotlinking을 해제할 수 없는 경우,
+        - `*.dable.io` 를 referrer로 허용해달라고 요청해주세요 (Referrer 기반 부분해제)
+        - 부연설명 (for dev team)
+          - hotlink protection은 Referer Header를 기반으로 동작하고, 이미지 요청에 대한 referrer는 모두 `*.dable.io` 로 시작합니다 (위젯 렌더링, 메타 테스트 툴 모두 포함)
+          - [참고용 Cloudflare 가이드](https://developers.cloudflare.com/workers/examples/hot-link-protection)
+2. 3rd party access를 막은 경우 (CORS 이슈),
+
+   - 👩‍🏫 CORS란?
+     - Cross-Origin Resource Sharing의 약자입니다
+     - `도메인A` 소유의 `리소스a`에 `도메인B`가 접근하고자 할 때, 보안상의 이유로 교차 출처인 `B`의 HTTP 요청이 제한되고, `B`에서는 `a`에 접근할 수 없게 됩니다
+     - `A`에서 `B`에 대해 CORS를 허용해준다면 접근할 수 있습니다
+   - 🤔 How to solve
+
+     - `*.dable.io` 에 대한 접근 허용을 요청해주세요
+     - WP-CORS 플러그인을 통한 가이드를 제공합니다
+
+       1. WP-CORS 플러그인 Install > Activate
+       2. Settings > CORS > 아래 코드 삽입
+
+          `*.dable.io`
 
 ### 매체 서버에 있는 폰트를 적용할 수 있나요?
 
